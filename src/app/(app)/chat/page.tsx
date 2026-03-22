@@ -103,14 +103,17 @@ export default function RandomChatPage() {
     if (!socket) return;
 
     const handleMatched = (data: any) => {
-      console.log('🎉 Matched event received!', data);
-      console.log('peerId from server:', data.peerId);
+      console.log('🎉 MATCHED EVENT RECEIVED!', data);
+      console.log('Type of data:', typeof data);
+      console.log('peerId value:', data?.peerId);
 
-      setPeerId(data.peerId);     // This line must run
-      setStatus('connected');
-
-      // Force re-render to see if state is updating
-      console.log('After setPeerId - current peerId should be:', data.peerId);
+      if (data?.peerId) {
+        setPeerId(data.peerId);
+        setStatus('connected');
+        console.log('✅ peerId set successfully to:', data.peerId);
+      } else {
+        console.error('❌ No peerId in matched event!', data);
+      }
     };
 
     const handlePartnerLeft = () => {
