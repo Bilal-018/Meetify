@@ -8,15 +8,14 @@ const iceServers = [
   { urls: 'stun:stun.l.google.com:19302' },
 ];
 
-export function useWebRTC(localStream: MediaStream | null, isMatched: boolean, peerId: string | null) {
+export function useWebRTC(localStream: MediaStream | null, shouldStart: boolean, peerId: string | null) {
   const socket = useSocket();
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [isWebRTCConnected, setIsWebRTCConnected] = useState(false);
 
   useEffect(() => {
-    // Only start WebRTC when we have everything
-    if (!socket || !isMatched || !localStream || !peerId) {
+    if (!shouldStart || !socket || !localStream || !peerId) {
       return;
     }
 
@@ -47,7 +46,6 @@ export function useWebRTC(localStream: MediaStream | null, isMatched: boolean, p
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('answer', { to: from, answer });
-      console.log("📤 Sent answer");
     };
 
     const onAnswer = async ({ answer }: any) => {
@@ -63,28 +61,22 @@ export function useWebRTC(localStream: MediaStream | null, isMatched: boolean, p
       pc.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
-    // Create offer if initiator
+    // Create offer
     const createOffer = async () => {
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socket.emit('offer', { to: peerId, offer });
-        console.log(`📤 Sent offer to ${peerId}`);
-      } catch (err) {
-        console.error("Failed to create offer", err);
-      }
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('offer', { to: peerId, offer });
+      console.log(`📤 Sent offer to ${peerId}`);
     };
 
-    setTimeout(() => {
-      if (!pc.remoteDescription) createOffer();
-    }, 800);
+    setTimeout(createOffer, 1000);
 
     return () => {
       pc.close();
       socket.off('offer', onOffer);
       socket.off('answer', onAnswer);
     };
-  }, [socket, localStream, isMatched, peerId]);
+  }, [socket, localStream, shouldStart, peerId]);
 
   return { remoteVideoRef, isWebRTCConnected };
 }
