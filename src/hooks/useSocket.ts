@@ -5,12 +5,15 @@ import { io, Socket } from 'socket.io-client';
 // const SOCKET_URL = 'http://localhost:4000';
 const SOCKET_URL = 'https://bb51-37-216-212-89.ngrok-free.app';
 
+let globalSocket: Socket | null = null;   // ← Global singleton
+
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // If socket already exists and is connected, do nothing
-    if (socketRef.current?.connected) {
+    // If we already have a global socket, use it
+    if (globalSocket) {
+      socketRef.current = globalSocket;
       return;
     }
 
@@ -20,10 +23,10 @@ export function useSocket() {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
       timeout: 20000,
     });
 
+    globalSocket = socket;
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -36,15 +39,19 @@ export function useSocket() {
 
     socket.on('disconnect', (reason) => {
       console.log('🔌 Socket disconnected:', reason);
+      globalSocket = null;
     });
 
-    // Cleanup function
     return () => {
-      console.log('🧹 Cleaning up socket...');
-      socket.disconnect();
+      // Only disconnect if this is the last component using it
+      if (socketRef.current === globalSocket) {
+        console.log('🧹 Cleaning up global socket...');
+        socket.disconnect();
+        globalSocket = null;
+      }
       socketRef.current = null;
     };
-  }, []); // Empty dependency array is intentional
+  }, []);
 
   return socketRef.current;
 }
