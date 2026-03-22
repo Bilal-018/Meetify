@@ -9,24 +9,30 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Prevent multiple connections
-    if (socketRef.current?.connected) return;
+    // Prevent creating multiple sockets
+    if (socketRef.current) return;
+
+    console.log('Creating socket connection to:', SOCKET_URL);
 
     const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 8,
-      timeout: 20000,
+      reconnectionAttempts: 5,
+      timeout: 15000,
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('✅ Socket connected:', socket.id);
+      console.log('✅ Socket connected successfully:', socket.id);
     });
 
     socket.on('connect_error', (err) => {
-      console.error('❌ Socket error:', err.message);
+      console.error('❌ Socket connection error:', err.message);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('🔌 Socket disconnected:', reason);
     });
 
     return () => {
