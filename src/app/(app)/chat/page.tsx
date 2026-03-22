@@ -100,33 +100,33 @@ export default function RandomChatPage() {
 
   // Socket Events
   useEffect(() => {
-    if (!socket) return
+    if (!socket) return;
 
     const handleMatched = (data: any) => {
-      console.log('🎉 Matched with peer!', data)
-      setPeerId(data.peerId)
-      setStatus('connected')
-    }
+      console.log('🎉 Matched with peer!', data);
+      setPeerId(data.peerId);
+      setStatus('connected');
+    };
 
     const handlePartnerLeft = () => {
-      console.log('Partner left')
-      setStatus('idle')
-      setPeerId(null)
-      cleanupStream()
-    }
+      console.log('Partner left');
+      setStatus('idle');
+      setPeerId(null);
+      cleanupStream();
+    };
 
-    socket.on('matched', handleMatched)
-    socket.on('partner-left', handlePartnerLeft)
+    socket.on('matched', handleMatched);
+    socket.on('partner-left', handlePartnerLeft);
 
     return () => {
-      socket.off('matched', handleMatched)
-      socket.off('partner-left', handlePartnerLeft)
-    }
-  }, [socket])
+      socket.off('matched', handleMatched);
+      socket.off('partner-left', handlePartnerLeft);
+    };
+  }, [socket]);
 
   // WebRTC
   const { remoteVideoRef: webrtcRemoteRef, isWebRTCConnected } = useWebRTC(
-    localStreamRef.current, 
+    localStreamRef.current,
     status === 'connected',
     peerId,                          // ← Pass peerId
   )
