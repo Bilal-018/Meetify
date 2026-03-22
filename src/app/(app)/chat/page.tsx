@@ -100,19 +100,24 @@ export default function RandomChatPage() {
 
   // Socket Events
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log("Socket is null - waiting...");
+      return;
+    }
+
+    console.log("✅ Setting up matched listener on socket:", socket.id);
 
     const handleMatched = (data: any) => {
-      console.log('🎉 MATCHED EVENT RECEIVED!', data);
-      console.log('Type of data:', typeof data);
-      console.log('peerId value:', data?.peerId);
+      console.log('🔥🔥🔥 MATCHED EVENT FIRED 🔥🔥🔥');
+      console.log('Full data received:', data);
+      console.log('peerId received:', data?.peerId);
 
       if (data?.peerId) {
         setPeerId(data.peerId);
         setStatus('connected');
-        console.log('✅ peerId set successfully to:', data.peerId);
+        console.log('✅ Successfully set peerId to:', data.peerId);
       } else {
-        console.error('❌ No peerId in matched event!', data);
+        console.error('❌ Matched event received but no peerId!', data);
       }
     };
 
