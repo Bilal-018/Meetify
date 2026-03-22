@@ -36,10 +36,6 @@ export default function RandomChatPage() {
         audio: true,
       })
       localStreamRef.current = stream
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-        localVideoRef.current.muted = true
-      }
       stream.getAudioTracks().forEach(t => (t.enabled = mediaState.audioEnabled))
       stream.getVideoTracks().forEach(t => (t.enabled = mediaState.videoEnabled))
       return stream
@@ -53,6 +49,16 @@ export default function RandomChatPage() {
       return null
     }
   }
+
+  // FIX bug 1: wire local stream to the PiP video element once it mounts.
+  // The PiP only renders after status becomes 'searching', so assigning srcObject
+  // inside getMedia() always misses — the ref is still null at that point.
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current
+      localVideoRef.current.muted = true
+    }
+  }, [status])
 
   const stopStream = () => {
     localStreamRef.current?.getTracks().forEach(t => t.stop())
@@ -363,11 +369,14 @@ export default function RandomChatPage() {
 
         {/* ── Local video PiP ─────────────────────────── */}
         {(isChatting || status === 'searching') && (
-          <div className="absolute bottom-24 sm:bottom-4 right-3 sm:right-4 z-20
-                          w-28 h-20 sm:w-44 sm:h-32 md:w-52 md:h-36
-                          rounded-xl sm:rounded-2xl overflow-hidden
-                          border border-white/10 shadow-2xl shadow-black/50
-                          bg-zinc-900">
+          <div className={`absolute z-20 rounded-xl sm:rounded-2xl overflow-hidden
+                          border border-white/10 shadow-2xl shadow-black/50 bg-zinc-900
+                          w-24 h-16 sm:w-44 sm:h-32 md:w-52 md:h-36
+                          right-3 sm:right-4
+                          ${showChat
+                            ? 'bottom-3 sm:bottom-4'
+                            : 'bottom-[88px] sm:bottom-24'
+                          }`}>
             <video
               ref={localVideoRef}
               autoPlay
@@ -386,14 +395,18 @@ export default function RandomChatPage() {
         )}
 
         {/* ── Chat panel ──────────────────────────────── */}
+        {/* Mobile: bottom drawer. Desktop: right side panel. */}
         {isChatting && (
-          <div className={`absolute inset-y-0 right-0 z-30 flex flex-col
-                          w-full sm:w-80 md:w-96
-                          bg-zinc-900/95 backdrop-blur-xl border-l border-white/5
+          <div className={`absolute z-30 flex flex-col
+                          bg-zinc-900/95 backdrop-blur-xl border-white/5
                           transition-transform duration-300 ease-out
-                          ${showChat ? 'translate-x-0' : 'translate-x-full'}`}>
+                          ${showChat ? 'translate-y-0 translate-x-0' : 'translate-y-full sm:translate-y-0 sm:translate-x-full'}
+                          left-0 right-0 bottom-0 h-[55%] border-t rounded-t-2xl
+                          sm:left-auto sm:top-0 sm:bottom-0 sm:h-auto sm:w-80 md:w-96 sm:border-t-0 sm:border-l sm:rounded-none`}>
 
             <div className="shrink-0 h-12 px-4 flex items-center justify-between border-b border-white/5">
+              {/* Drag handle visible on mobile */}
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-white/20 sm:hidden" />
               <span className="text-sm font-medium text-zinc-300">Chat</span>
               <button
                 onClick={() => setShowChat(false)}
