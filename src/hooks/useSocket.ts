@@ -9,16 +9,19 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Prevent creating multiple sockets
-    if (socketRef.current) return;
+    // If socket already exists and is connected, do nothing
+    if (socketRef.current?.connected) {
+      return;
+    }
 
-    console.log('Creating socket connection to:', SOCKET_URL);
+    console.log('🔌 Creating new socket connection to:', SOCKET_URL);
 
     const socket = io(SOCKET_URL, {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
-      timeout: 15000,
+      reconnectionDelay: 1000,
+      timeout: 20000,
     });
 
     socketRef.current = socket;
@@ -35,11 +38,13 @@ export function useSocket() {
       console.log('🔌 Socket disconnected:', reason);
     });
 
+    // Cleanup function
     return () => {
+      console.log('🧹 Cleaning up socket...');
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, []); // Empty dependency array is intentional
 
   return socketRef.current;
 }
