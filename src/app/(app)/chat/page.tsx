@@ -103,9 +103,14 @@ export default function RandomChatPage() {
     if (!socket) return;
 
     const handleMatched = (data: any) => {
-      console.log('🎉 Matched with peer!', data);
-      setPeerId(data.peerId);
+      console.log('🎉 Matched event received!', data);
+      console.log('peerId from server:', data.peerId);
+
+      setPeerId(data.peerId);     // This line must run
       setStatus('connected');
+
+      // Force re-render to see if state is updating
+      console.log('After setPeerId - current peerId should be:', data.peerId);
     };
 
     const handlePartnerLeft = () => {
@@ -124,7 +129,6 @@ export default function RandomChatPage() {
     };
   }, [socket]);
 
-  // WebRTC
   // WebRTC
   const { remoteVideoRef: webrtcRemoteRef, isWebRTCConnected } = useWebRTC(
     localStreamRef.current,
