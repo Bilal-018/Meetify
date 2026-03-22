@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 // const SOCKET_URL = 'http://localhost:4000';
-const SOCKET_URL = 'https://bb51-37-216-212-89.ngrok-free.app';
+const SOCKET_URL = 'https://a250-37-216-212-89.ngrok-free.app';
 
 let globalSocket: Socket | null = null;   // ← Global singleton
 
