@@ -60,16 +60,28 @@ export default function RandomChatPage() {
     socket.emit('join-queue')
   }
 
-  const handleCancelOrEnd = () => {
+  // "Next Stranger" — keep your camera/mic alive, drop peer, re-queue
+  const handleNext = () => {
     socket?.emit('next')
-    cleanupStream()
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+    setPeerId(null)
+    setIsInitiator(false)
+    setMessages([])
+    setStatus('searching')
+    socket?.emit('join-queue')
+  }
+
+  // "Cancel" during search or full stop — kill stream and go idle
+  const handleCancel = () => {
+    socket?.emit('next')
+    stopStream()
     setStatus('idle')
     setPeerId(null)
     setIsInitiator(false)
     setMessages([])
   }
 
-  const cleanupStream = () => {
+  const stopStream = () => {
     localStreamRef.current?.getTracks().forEach(t => t.stop())
     localStreamRef.current = null
     if (localVideoRef.current) localVideoRef.current.srcObject = null
@@ -103,30 +115,37 @@ export default function RandomChatPage() {
   useEffect(() => {
     if (!socket) return
 
-    console.log('✅ Setting up socket listeners, socket id:', socket.id)
-
     const handleMatched = (data: { peerId: string; isInitiator: boolean }) => {
       console.log('🔥 Matched:', data)
       setPeerId(data.peerId)
-      // FIX: store isInitiator from the server
       setIsInitiator(data.isInitiator)
       setStatus('connected')
     }
 
+    // Partner clicked Next — clear remote, re-queue automatically
     const handlePartnerLeft = () => {
       console.log('Partner left')
-      setStatus('idle')
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
       setPeerId(null)
       setIsInitiator(false)
-      cleanupStream()
+      setMessages([])
+      setStatus('searching')
+      socket.emit('join-queue')
+    }
+
+    // Server confirms queue status
+    const handleStatus = (s: 'waiting' | 'idle') => {
+      if (s === 'waiting') setStatus('searching')
     }
 
     socket.on('matched', handleMatched)
     socket.on('partner-left', handlePartnerLeft)
+    socket.on('status', handleStatus)
 
     return () => {
       socket.off('matched', handleMatched)
       socket.off('partner-left', handlePartnerLeft)
+      socket.off('status', handleStatus)
     }
   }, [socket])
 
@@ -140,7 +159,7 @@ export default function RandomChatPage() {
   })
 
   useEffect(() => {
-    return () => cleanupStream()
+    return () => stopStream()
   }, [])
 
   const isChatting = status === 'connected'
@@ -183,7 +202,7 @@ export default function RandomChatPage() {
               {status === 'searching' ? (
                 <>
                   <div className="text-xl animate-pulse">Looking for a stranger...</div>
-                  <button onClick={handleCancelOrEnd} className="px-10 py-4 bg-zinc-700 hover:bg-zinc-600 rounded-full">
+                  <button onClick={handleCancel} className="px-10 py-4 bg-zinc-700 hover:bg-zinc-600 rounded-full">
                     Cancel
                   </button>
                 </>
@@ -240,7 +259,7 @@ export default function RandomChatPage() {
           <button onClick={toggleVideo} className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl ${mediaState.videoEnabled ? 'bg-zinc-800' : 'bg-red-600/80'}`}>
             {mediaState.videoEnabled ? '📷' : '🚫'}
           </button>
-          <button onClick={handleCancelOrEnd} className="px-10 py-4 bg-red-600 hover:bg-red-700 rounded-full font-semibold">
+          <button onClick={handleNext} className="px-10 py-4 bg-red-600 hover:bg-red-700 rounded-full font-semibold">
             Next Stranger
           </button>
         </footer>
