@@ -125,13 +125,13 @@ export default function RandomChatPage() {
   }, [socket]);
 
   // WebRTC
-  // WebRTC
   const { remoteVideoRef: webrtcRemoteRef, isWebRTCConnected } = useWebRTC(
     localStreamRef.current,
-    status === 'connected' && !!peerId,   // ← Only start when we have peerId
+    status === 'connected' && !!peerId,
     peerId
   );
-  console.log("WebRTC called with peerId:", peerId, "isMatched:", status === 'connected');
+
+  console.log("WebRTC hook called → peerId:", peerId, "isMatched:", status === 'connected' && !!peerId);
 
   useEffect(() => {
     if (webrtcRemoteRef.current) {

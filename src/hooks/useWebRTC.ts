@@ -15,17 +15,18 @@ export function useWebRTC(localStream: MediaStream | null, isMatched: boolean, p
   const [isWebRTCConnected, setIsWebRTCConnected] = useState(false);
 
   useEffect(() => {
-    if (!socket || !isMatched || !localStream || !peerId) return;
+    // Only start WebRTC when we have everything
+    if (!socket || !isMatched || !localStream || !peerId) {
+      return;
+    }
 
     console.log(`🔥 Starting WebRTC with peer: ${peerId}`);
 
     const pc = new RTCPeerConnection({ iceServers });
     pcRef.current = pc;
 
-    // Add local tracks
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-    // Receive remote track
     pc.ontrack = (event) => {
       console.log("✅ Remote video track received!");
       if (remoteVideoRef.current && event.streams[0]) {
@@ -34,43 +35,35 @@ export function useWebRTC(localStream: MediaStream | null, isMatched: boolean, p
       }
     };
 
-    // ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         socket.emit('ice-candidate', { to: peerId, candidate: event.candidate });
       }
     };
 
-    // === IMPORTANT: Set up listeners FIRST ===
     const onOffer = async ({ from, offer }: any) => {
       console.log(`📥 Received offer from ${from}`);
-      try {
-        await pc.setRemoteDescription(offer);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit('answer', { to: from, answer });
-        console.log("📤 Sent answer");
-      } catch (err) {
-        console.error("Error handling offer", err);
-      }
+      await pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('answer', { to: from, answer });
+      console.log("📤 Sent answer");
     };
 
     const onAnswer = async ({ answer }: any) => {
       console.log("📥 Received answer");
-      try {
-        await pc.setRemoteDescription(answer);
-        setIsWebRTCConnected(true);
-        console.log("🎉 WebRTC Connection Successful! Remote video should now appear.");
-      } catch (err) {
-        console.error("Error handling answer", err);
-      }
+      await pc.setRemoteDescription(answer);
+      setIsWebRTCConnected(true);
+      console.log("🎉 WebRTC Connection Successful!");
     };
 
     socket.on('offer', onOffer);
     socket.on('answer', onAnswer);
-    socket.on('ice-candidate', ({ candidate }) => pc.addIceCandidate(new RTCIceCandidate(candidate)));
+    socket.on('ice-candidate', ({ candidate }) => {
+      pc.addIceCandidate(new RTCIceCandidate(candidate));
+    });
 
-    // Create offer if we are the initiator (one side only)
+    // Create offer if initiator
     const createOffer = async () => {
       try {
         const offer = await pc.createOffer();
@@ -82,12 +75,9 @@ export function useWebRTC(localStream: MediaStream | null, isMatched: boolean, p
       }
     };
 
-    // Only the initiator creates the offer
     setTimeout(() => {
-      if (!pc.remoteDescription) {
-        createOffer();
-      }
-    }, 1000);
+      if (!pc.remoteDescription) createOffer();
+    }, 800);
 
     return () => {
       pc.close();
