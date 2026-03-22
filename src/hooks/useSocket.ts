@@ -1,58 +1,53 @@
 // src/hooks/useSocket.ts
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-// const SOCKET_URL = 'http://localhost:4000';
-// const SOCKET_URL = 'https://a250-37-216-212-89.ngrok-free.app';
 const SOCKET_URL = process.env.NEXT_PUBLIC_SIGNALING_URL;
 
-let globalSocket: Socket | null = null;   // ← Global singleton
+let globalSocket: Socket | null = null;
 
 export function useSocket() {
-  const socketRef = useRef<Socket | null>(null);
+  // FIX: Use useState instead of useRef so consumers re-render when socket is ready
+  const [socket, setSocket] = useState<Socket | null>(globalSocket);
 
   useEffect(() => {
-    // If we already have a global socket, use it
     if (globalSocket) {
-      socketRef.current = globalSocket;
+      setSocket(globalSocket);
       return;
     }
 
     console.log('🔌 Creating new socket connection to:', SOCKET_URL);
 
-    const socket = io(SOCKET_URL, {
+    const s = io(SOCKET_URL, {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       timeout: 20000,
     });
 
-    globalSocket = socket;
-    socketRef.current = socket;
+    globalSocket = s;
+    setSocket(s);
 
-    socket.on('connect', () => {
-      console.log('✅ Socket connected successfully:', socket.id);
+    s.on('connect', () => {
+      console.log('✅ Socket connected:', s.id);
     });
 
-    socket.on('connect_error', (err) => {
+    s.on('connect_error', (err) => {
       console.error('❌ Socket connection error:', err.message);
     });
 
-    socket.on('disconnect', (reason) => {
+    s.on('disconnect', (reason) => {
       console.log('🔌 Socket disconnected:', reason);
       globalSocket = null;
+      setSocket(null);
     });
 
     return () => {
-      // Only disconnect if this is the last component using it
-      if (socketRef.current === globalSocket) {
-        console.log('🧹 Cleaning up global socket...');
-        socket.disconnect();
-        globalSocket = null;
-      }
-      socketRef.current = null;
+      s.disconnect();
+      globalSocket = null;
+      setSocket(null);
     };
   }, []);
 
-  return socketRef.current;
+  return socket;
 }

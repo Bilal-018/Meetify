@@ -11,20 +11,21 @@ type MediaState = {
 }
 
 export default function RandomChatPage() {
-  const localVideoRef = useRef<HTMLVideoElement>(null)
+  // FIX: remoteVideoRef lives here and is passed down — don't try to copy it
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
-
+  const localVideoRef = useRef<HTMLVideoElement>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const socket = useSocket()
 
   const [status, setStatus] = useState<'idle' | 'requesting' | 'searching' | 'connected' | 'error'>('idle')
-  const [peerId, setPeerId] = useState<string | null>(null)        // ← New
+  const [peerId, setPeerId] = useState<string | null>(null)
+  // FIX: track isInitiator from the matched event
+  const [isInitiator, setIsInitiator] = useState(false)
   const [mediaState, setMediaState] = useState<MediaState>({ audioEnabled: true, videoEnabled: true })
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [messages, setMessages] = useState<string[]>([])
   const [chatInput, setChatInput] = useState('')
 
-  // Get media
   const getMedia = async () => {
     try {
       setStatus('requesting')
@@ -55,7 +56,6 @@ export default function RandomChatPage() {
   const handleStart = async () => {
     const stream = await getMedia()
     if (!stream || !socket) return
-
     setStatus('searching')
     socket.emit('join-queue')
   }
@@ -65,6 +65,7 @@ export default function RandomChatPage() {
     cleanupStream()
     setStatus('idle')
     setPeerId(null)
+    setIsInitiator(false)
     setMessages([])
   }
 
@@ -98,60 +99,46 @@ export default function RandomChatPage() {
     setChatInput('')
   }
 
-  // Socket Events
+  // Socket events
   useEffect(() => {
-    if (!socket) {
-      console.log("Socket is null - waiting...");
-      return;
+    if (!socket) return
+
+    console.log('✅ Setting up socket listeners, socket id:', socket.id)
+
+    const handleMatched = (data: { peerId: string; isInitiator: boolean }) => {
+      console.log('🔥 Matched:', data)
+      setPeerId(data.peerId)
+      // FIX: store isInitiator from the server
+      setIsInitiator(data.isInitiator)
+      setStatus('connected')
     }
-
-    console.log("✅ Setting up matched listener on socket:", socket.id);
-
-    const handleMatched = (data: any) => {
-      console.log('🔥🔥🔥 MATCHED EVENT FIRED 🔥🔥🔥');
-      console.log('Full data received:', data);
-      console.log('peerId received:', data?.peerId);
-
-      if (data?.peerId) {
-        setPeerId(data.peerId);
-        setStatus('connected');
-        console.log('✅ Successfully set peerId to:', data.peerId);
-      } else {
-        console.error('❌ Matched event received but no peerId!', data);
-      }
-    };
 
     const handlePartnerLeft = () => {
-      console.log('Partner left');
-      setStatus('idle');
-      setPeerId(null);
-      cleanupStream();
-    };
+      console.log('Partner left')
+      setStatus('idle')
+      setPeerId(null)
+      setIsInitiator(false)
+      cleanupStream()
+    }
 
-    socket.on('matched', handleMatched);
-    socket.on('partner-left', handlePartnerLeft);
+    socket.on('matched', handleMatched)
+    socket.on('partner-left', handlePartnerLeft)
 
     return () => {
-      socket.off('matched', handleMatched);
-      socket.off('partner-left', handlePartnerLeft);
-    };
-  }, [socket]);
-
-  // WebRTC
-  const { remoteVideoRef: webrtcRemoteRef, isWebRTCConnected } = useWebRTC(
-    localStreamRef.current,
-    peerId
-  );
-
-  console.log("WebRTC hook called → peerId:", peerId);
-
-  useEffect(() => {
-    if (webrtcRemoteRef.current) {
-      remoteVideoRef.current = webrtcRemoteRef.current
+      socket.off('matched', handleMatched)
+      socket.off('partner-left', handlePartnerLeft)
     }
-  }, [webrtcRemoteRef])
+  }, [socket])
 
-  // Cleanup
+  // FIX: pass isInitiator — useWebRTC now accepts it
+  // FIX: pass remoteVideoRef so the hook writes directly to the DOM element
+  const { isWebRTCConnected } = useWebRTC({
+    localStream: localStreamRef.current,
+    peerId,
+    isInitiator,
+    remoteVideoRef,
+  })
+
   useEffect(() => {
     return () => cleanupStream()
   }, [])
@@ -167,11 +154,13 @@ export default function RandomChatPage() {
           {status === 'requesting' && 'Requesting camera...'}
           {status === 'searching' && 'Finding someone...'}
           {isChatting && (isWebRTCConnected ? 'Connected • Video Active' : 'Connected • Connecting video...')}
+          {status === 'error' && (errorMsg ?? 'Error')}
         </div>
       </header>
 
       <div className="flex-1 relative flex">
         <div className={`flex-1 relative ${isChatting ? 'mr-80' : ''}`}>
+          {/* FIX: remoteVideoRef is defined in THIS component and passed to both the DOM and the hook */}
           <video
             ref={remoteVideoRef}
             autoPlay
