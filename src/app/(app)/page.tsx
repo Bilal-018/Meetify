@@ -35,7 +35,7 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.07A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
             </svg>
           </div>
-          <span className="font-semibold text-sm sm:text-base tracking-tight">Meetify</span>
+          <span className="font-semibold text-sm sm:text-base tracking-tight">Lucu Chat</span>
         </div>
         <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -216,13 +216,13 @@ export default function Home() {
       <footer className="shrink-0 border-t border-white/5 px-4 sm:px-6 py-5">
         <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-zinc-600 text-center sm:text-left">
-            © {new Date().getFullYear()} Meetify. For adults 18+ only.
+            © {new Date().getFullYear()} Lucu Chat. For adults 18+ only.
           </p>
           <div className="flex items-center gap-4 text-xs text-zinc-600">
             <a href="/terms" className="hover:text-zinc-400 transition-colors">Terms</a>
             <a href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</a>
             <a href="/safety" className="hover:text-zinc-400 transition-colors">Safety</a>
-            <a href="mailto:abuse@meetify.app" className="hover:text-zinc-400 transition-colors">Report abuse</a>
+            <a href="mailto:abuse@lucuchat.app" className="hover:text-zinc-400 transition-colors">Report abuse</a>
           </div>
         </div>
       </footer>
