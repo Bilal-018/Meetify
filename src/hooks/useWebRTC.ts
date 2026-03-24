@@ -14,14 +14,45 @@ interface WebRTCOptions {
   peerId: string | null;
   isInitiator: boolean;
   remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  onMessage?: (text: string) => void;
 }
 
-export function useWebRTC({ localStream, peerId, isInitiator, remoteVideoRef }: WebRTCOptions) {
+export function useWebRTC({ localStream, peerId, isInitiator, remoteVideoRef, onMessage }: WebRTCOptions) {
   const socket = useSocket();
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  // FIX: queue candidates that arrive before remoteDescription is set
   const pendingCandidates = useRef<RTCIceCandidateInit[]>([]);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const onMessageRef = useRef(onMessage);
   const [isConnected, setIsConnected] = useState(false);
+  const [isDataChannelReady, setIsDataChannelReady] = useState(false);
+
+  // Keep onMessage ref fresh without re-running the WebRTC effect
+  useEffect(() => { onMessageRef.current = onMessage }, [onMessage]);
+
+  const setupDataChannel = (dc: RTCDataChannel) => {
+    dataChannelRef.current = dc;
+    dc.onopen = () => {
+      console.log('💬 Data channel open');
+      setIsDataChannelReady(true);
+    };
+    dc.onclose = () => {
+      console.log('💬 Data channel closed');
+      setIsDataChannelReady(false);
+    };
+    dc.onmessage = (e) => {
+      console.log('💬 Message received:', e.data);
+      onMessageRef.current?.(e.data);
+    };
+  };
+
+  const sendMessage = (text: string): boolean => {
+    if (dataChannelRef.current?.readyState === 'open') {
+      dataChannelRef.current.send(text);
+      return true;
+    }
+    console.warn('⚠️ Data channel not open, cannot send message');
+    return false;
+  };
 
   useEffect(() => {
     // FIX: socket is now properly non-null when this runs (because useSocket returns state)
@@ -32,6 +63,20 @@ export function useWebRTC({ localStream, peerId, isInitiator, remoteVideoRef }: 
     const pc = new RTCPeerConnection({ iceServers });
     pcRef.current = pc;
     pendingCandidates.current = [];
+    dataChannelRef.current = null;
+    setIsDataChannelReady(false);
+
+    // Initiator creates the data channel before the offer
+    if (isInitiator) {
+      const dc = pc.createDataChannel('chat', { ordered: true });
+      setupDataChannel(dc);
+    } else {
+      // Non-initiator receives it via ondatachannel
+      pc.ondatachannel = (e) => {
+        console.log('💬 Received data channel');
+        setupDataChannel(e.channel);
+      };
+    }
 
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
@@ -124,10 +169,12 @@ export function useWebRTC({ localStream, peerId, isInitiator, remoteVideoRef }: 
       socket.off('offer', handleOffer);
       socket.off('answer', handleAnswer);
       socket.off('ice-candidate', handleIceCandidate);
+      dataChannelRef.current?.close();
+      dataChannelRef.current = null;
       pc.close();
       pcRef.current = null;
     };
   }, [socket, localStream, peerId, isInitiator]);
 
-  return { isWebRTCConnected: isConnected };
+  return { isWebRTCConnected: isConnected, sendMessage, isDataChannelReady };
 }

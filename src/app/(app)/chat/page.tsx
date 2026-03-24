@@ -116,7 +116,12 @@ export default function RandomChatPage() {
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault()
     if (!chatInput.trim() || status !== 'connected') return
-    setMessages(p => [...p, { text: chatInput.trim(), self: true }])
+    const text = chatInput.trim()
+    // Send over WebRTC data channel
+    const sent = rtcSendMessage(text)
+    if (sent) {
+      setMessages(p => [...p, { text, self: true }])
+    }
     setChatInput('')
   }
 
@@ -158,11 +163,14 @@ export default function RandomChatPage() {
   }, [socket])
 
   // ── WebRTC ───────────────────────────────────────────────
-  const { isWebRTCConnected } = useWebRTC({
+  const { isWebRTCConnected, sendMessage: rtcSendMessage, isDataChannelReady } = useWebRTC({
     localStream: localStreamRef.current,
     peerId,
     isInitiator,
     remoteVideoRef,
+    onMessage: (text) => {
+      setMessages(p => [...p, { text, self: false }])
+    },
   })
 
   // ── Auto-scroll + unread badge ───────────────────────────
@@ -207,7 +215,7 @@ export default function RandomChatPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.07A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
             </svg>
           </div>
-          <span className="font-semibold text-sm sm:text-base tracking-tight">Lucu Chat</span>
+          <span className="font-semibold text-sm sm:text-base tracking-tight">Meetify</span>
         </div>
 
         {/* Status pill */}
@@ -443,19 +451,23 @@ export default function RandomChatPage() {
             </div>
 
             <form onSubmit={sendMessage} className="shrink-0 p-3 border-t border-white/5">
+              {!isDataChannelReady && isChatting && (
+                <p className="text-[11px] text-zinc-600 text-center mb-2">Waiting for chat channel…</p>
+              )}
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
-                  placeholder="Message…"
+                  placeholder={isDataChannelReady ? 'Message…' : 'Connecting…'}
                   maxLength={300}
                   autoComplete="off"
-                  className="flex-1 min-w-0 bg-zinc-800 hover:bg-zinc-700 focus:bg-zinc-700 rounded-xl px-4 py-2.5 text-sm placeholder-zinc-500 outline-none focus:ring-1 focus:ring-violet-500/50 transition-colors"
+                  disabled={!isDataChannelReady}
+                  className="flex-1 min-w-0 bg-zinc-800 hover:bg-zinc-700 focus:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-4 py-2.5 text-sm placeholder-zinc-500 outline-none focus:ring-1 focus:ring-violet-500/50 transition-colors"
                 />
                 <button
                   type="submit"
-                  disabled={!chatInput.trim()}
+                  disabled={!chatInput.trim() || !isDataChannelReady}
                   className="w-10 h-10 shrink-0 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors active:scale-95"
                   aria-label="Send message"
                 >
