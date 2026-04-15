@@ -80,6 +80,7 @@ export default function RandomChatPage() {
     setPeerId(null)
     setIsInitiator(false)
     setMessages([])
+    if (!mediaState.audioEnabled) setMediaState({ audioEnabled: true });
     setUnread(0)
     setStatus('searching')
     socket?.emit('join-queue')
@@ -206,7 +207,7 @@ export default function RandomChatPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.07A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
             </svg>
           </div>
-          <span className="font-semibold text-sm sm:text-base tracking-tight">Meetify</span>
+          <span className="font-semibold text-sm sm:text-base tracking-tight">Lucu Chat</span>
         </div>
 
         {/* Status pill */}
