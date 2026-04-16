@@ -77,10 +77,13 @@ export default function RandomChatPage() {
   const handleNext = () => {
     socket?.emit('next')
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+    // Reset audio to unmuted for the next stranger
+    const audioTrack = localStreamRef.current?.getAudioTracks()[0]
+    if (audioTrack) audioTrack.enabled = true
+    setMediaState({ audioEnabled: true })
     setPeerId(null)
     setIsInitiator(false)
     setMessages([])
-    if (!mediaState.audioEnabled) setMediaState({ audioEnabled: true });
     setUnread(0)
     setStatus('searching')
     socket?.emit('join-queue')
@@ -131,6 +134,10 @@ export default function RandomChatPage() {
 
     const handlePartnerLeft = () => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+      // Reset audio to unmuted for the next stranger
+      const audioTrack = localStreamRef.current?.getAudioTracks()[0]
+      if (audioTrack) audioTrack.enabled = true
+      setMediaState({ audioEnabled: true })
       setPeerId(null)
       setIsInitiator(false)
       setMessages([])
